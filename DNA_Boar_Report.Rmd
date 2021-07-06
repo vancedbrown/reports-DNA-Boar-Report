@@ -1,0 +1,313 @@
+---
+title:
+output: 
+  html_document: 
+    theme: sandstone
+    toc_depth: 1
+    toc_float: yes
+    keep_md: yes
+---
+<style type="text/css">
+.main-container {
+  max-width: 1800px;
+  margin-left: 0px;
+  margin-right: 0px
+}
+</style>
+
+<h1><center>DNA Boar Report</h1>
+<br>
+<br>
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+library(tidyverse)
+library(knitr)
+library(dplyr)
+library(lubridate)
+library(stringr)
+library(writexl)
+library(here)
+library(kableExtra)
+library(writexl)
+library(writexl)
+library(openxlsx)
+library(readxl)
+
+source('C:/Users/vance/Documents/myR/functions/getSQL.r')
+
+pigraw<-read_csv("C:/Users/vance/Documents/projects/Working Project Directory/data/data-SQL-BS-Data-Pull/pig.csv", 
+                 col_types = cols(Index = col_number()))
+collraw<-read_csv("C:/Users/vance/Documents/projects/Working Project Directory/data/data-SQL-BS-Data-Pull/coll.csv")
+distraw<-read_csv("C:/Users/vance/Documents/projects/Working Project Directory/data/data-SQL-BS-Data-Pull/dist.csv")
+splitraw<-read_csv("C:/Users/vance/Documents/projects/Working Project Directory/data/data-SQL-BS-Data-Pull/split.csv")
+
+
+aaa<-"SELECT a.[StudID]
+      ,a.[BoarID]
+      ,a.[Name]
+      ,a.[Breed]
+      ,a.[Status]
+      ,a.[Date_Arrival]
+	  ,b.[idx]
+  FROM [Intranet].[dbo].[Boar_Pig] a
+  inner join [OADB].[reports].[idxCurrent] b on a.[Name] = b.[spg_id]
+  WHERE [StudID] in ('MBW Cimarron','MBW Cyclone','MBW Yuma', 'Princeton','High Desert') 
+  and [Breed] in ('DNA200', 'DNA400','DNA600')
+  and [Status] in ('WORKING','NONWORKING')"
+
+dnapigs<-getSQL('Intranet', query = aaa)
+
+
+pigraw$Date_Arrival<-as.Date(pigraw$Date_Arrival)
+pigraw$Date_Studout<-as.Date(pigraw$Date_Studout)
+collraw$Col_Date<-as.Date(collraw$Col_Date)
+distraw$Date_Shipped<-as.Date(distraw$Date_Shipped)
+splitraw$Collnum<-as.numeric(splitraw$Collnum)
+
+dna1<-left_join(x = pigraw,y = collraw, by=c("BoarID"="BoarID"))
+
+write_csv(x = dna1, path = 'boars.csv')
+
+dna2<-dna1 %>% 
+  filter(`Boar Stud.x`%in%c('MBW Cimarron','MBW Cyclone','MBW Yuma', 'Princeton','High Desert'),
+         Date_Arrival>'2020-01-01',
+         Breed%in%c('DNA200','DNA400','DNA600'),
+         `Collection Status`%in%c('US','TR'),
+         `Boar Status`=='WORKING')
+
+dna3<-dna2 %>% 
+  group_by(`Boar Stud.x`,Breed) %>% 
+  summarise('Boars Jumped Once or More'=n_distinct(BoarID))
+
+dna4<-dna2 %>% 
+  group_by(`Boar Stud.x`,Breed) %>% 
+  filter(`Collection Status`=='US') %>% 
+  summarise('Boars Producing'=n_distinct(BoarID))
+
+dna5<-dna2 %>% 
+  group_by(`Boar Stud.x`,Breed) %>% 
+  filter(`Collection Status`=='US',
+         Col_Date>=floor_date(x = today(),unit = "week",week_start = 7)-21) %>% 
+  summarise('Doses Per Collection'=mean(Tot_Sperm)/2)
+
+dna6<-pigraw %>% 
+  filter(`Boar Stud`%in%c('MBW Cimarron','MBW Cyclone','MBW Yuma', 'Princeton','High Desert'),
+         Date_Arrival>'2020-01-01',
+         Breed%in%c('DNA200','DNA400','DNA600'),
+         `Boar Status`=='WORKING') %>% 
+  group_by(`Boar Stud`,Breed) %>% 
+  summarise('Total Boars in Stud'=n_distinct(BoarID))
+
+
+
+dna7<-left_join(x = dna6,y = dna3,by=c("Boar Stud"="Boar Stud.x","Breed"="Breed"))
+dna8<-left_join(x = dna7,y = dna4,by=c("Boar Stud"="Boar Stud.x","Breed"="Breed"))
+dna9<-left_join(x = dna8,y = dna5,by=c("Boar Stud"="Boar Stud.x","Breed"="Breed"))
+
+dna9$`Boars Not Jumped Once`<-dna9$`Total Boars in Stud`-dna9$`Boars Jumped Once or More`
+
+dna9<-dna9[c(1,2,4,3,7,5,6)]
+
+write_csv(x = dna9,path = here::here("PIC_Update.csv"))
+
+dna10<-dna2 %>% 
+  group_by(`Boar Stud.x`,Breed, Date_Arrival) %>% 
+  summarise('Boars Jumped Once or More'=n_distinct(BoarID))
+
+dna11<-pigraw %>% 
+  filter(`Boar Stud`%in%c('MBW Cimarron','MBW Cyclone','MBW Yuma', 'Princeton','High Desert'),
+         Date_Arrival>'2020-01-01',
+         Breed%in%c('DNA200','DNA400','DNA600'),
+         Date_Studout!='2021-03-11' | is.na(Date_Studout))%>%  
+  group_by(`Boar Stud`,Breed, Date_Arrival) %>% 
+  summarise('Total Boars Entered'=n_distinct(BoarID))
+  
+dna12<-pigraw %>% 
+  filter(`Boar Stud`%in%c('MBW Cimarron','MBW Cyclone','MBW Yuma', 'Princeton','High Desert'),
+         Date_Arrival>'2020-01-01',
+         Breed%in%c('DNA200','DNA400','DNA600'),
+         `Boar Status`=='WORKING') %>% 
+  group_by(`Boar Stud`,Breed, Date_Arrival) %>% 
+  summarise('Working Boars'=n_distinct(BoarID))
+
+
+dna13<-left_join(x = dna11,y = dna12,by=c("Boar Stud"="Boar Stud","Date_Arrival"="Date_Arrival", "Breed"="Breed"))
+dna14<-left_join(x = dna13,y = dna10,by=c("Boar Stud"="Boar Stud.x","Date_Arrival"="Date_Arrival", "Breed"="Breed"))
+
+dna15<-distraw %>% 
+  filter(`Boar Stud`%in%c('MBW Cimarron','MBW Cyclone','MBW Yuma', 'Princeton','High Desert'),
+         Dest!='* TRASH *',
+         Breed%in%c('DNA200','DNA400','DNA600'),
+         Date_Shipped>'2020-01-01')
+
+dna16<-left_join(x = dna15,y = splitraw, by=c("Boar Stud"="Boar Stud","BatchNum"="BatchNum"))
+dna17<-left_join(x = dna16,y = pigraw, by=c("BoarID"="BoarID"))
+
+dna18<-dna17 %>% 
+  group_by(`Boar Stud.x`,Breed.x) %>%
+  filter(`Boar Status`=='WORKING') %>% 
+  summarise('Total Boars Distributed'=n_distinct(BoarID))
+
+
+dna18<-left_join(x = dna9,y = dna18, by=c("Boar Stud"="Boar Stud.x","Breed"="Breed.x"))
+
+dna18<-dna18[c(1,2,4,3,5,6,8,7)]
+
+dna17$wk<-isoweek(dna17$Date_Shipped)
+
+
+dna18a<-dna17 %>% 
+  group_by(`Boar Stud.x`,Breed.x,wk) %>%
+  filter(`Boar Status`=='WORKING',
+         Date_Shipped>=floor_date(x = today(),unit = "week", week_start = 1)-84) %>% 
+  summarise(distrib=n_distinct(BoarID)) %>%
+  ungroup() %>% 
+  group_by(`Boar Stud.x`,Breed.x) %>% 
+  summarise('12 Week Average Boars Distributed'=mean(distrib))
+
+
+dna18b<-dna17 %>% 
+  filter(`Boar Status`=='WORKING',
+         Date_Shipped>=floor_date(x = today(),unit = "week", week_start = 1)-84) %>% 
+  group_by(BoarID) %>% 
+  mutate(n=n_distinct(Date_Shipped)) %>% 
+  filter(n>0) %>%
+  ungroup()
+
+# write_csv(dna18b, 'distributions.csv')
+
+dna18c<-dna18b %>% 
+  group_by(`Boar Stud.x`,Breed.x, wk) %>% 
+  summarise(distrib=n_distinct(BoarID)) %>% 
+  ungroup() %>% 
+  group_by(`Boar Stud.x`,Breed.x) %>% 
+  summarise(boars=mean(distrib))
+
+dna18d<-dna18b[!duplicated(dna18b$BoarID),]
+
+dnapigs$BoarID<-as.character(dnapigs$BoarID)
+
+dna18e<-left_join(x = dna18d, y = dnapigs, by=c("BoarID"="BoarID"))
+
+# write_csv(dna18e,'pigs.csv')
+
+dna18f<-dna18e %>% 
+  group_by(StudID,Breed) %>% 
+  mutate(rank=row_number(idx),
+         maxrank=max(rank)/4)
+
+# write_csv(x = dna18c, file = 'data.csv')
+
+dna18g<-dna18f %>% 
+  group_by(StudID,Breed) %>% 
+  filter(rank<=maxrank) %>% 
+  summarise('Minimum Index of Incoming Boars'=mean(idx)+4)
+
+##### Use weekly index ######
+
+dnaa1<-left_join(x = dna18b,y = collraw, by=c("Boar Stud.x"="Boar Stud","Collnum"="Collnum"))
+
+dnaa2<-dnaa1 %>% 
+  mutate(dd=paste(dnaa1$`Boar Stud.x`,dnaa1$Collnum))
+
+dnaa3<-dnaa2[!duplicated(dnaa2$dd),]
+
+dnaa4<-dnaa3 %>% 
+  group_by(`Boar Stud.x`,Breed.x) %>% 
+  filter(!is.na(EBV)) %>% 
+  mutate(weightedidx=EBV*Used_Doses,
+         rank=row_number(weightedidx),
+         maxrank=max(rank)/4)
+
+dnaa5<-dnaa4 %>% 
+  group_by(`Boar Stud.x`,Breed.x) %>% 
+  filter(rank<=maxrank) %>% 
+  summarise('Minimum Index of Incoming Boars'=(sum(weightedidx)/sum(Used_Doses))+8)
+
+###################################
+
+dna18h<-left_join(x = dna18,y = dna18a,by=c("Boar Stud"="Boar Stud.x","Breed"="Breed.x"))
+dna18i<-left_join(x = dna18h,y = dnaa5,by=c("Boar Stud"="Boar Stud.x","Breed"="Breed.x"))
+
+dna18j<-dna2 %>% 
+  group_by(`Boar Stud.x`,Breed) %>% 
+  filter(Col_Date>=floor_date(x = today(),unit = "week",week_start = 7)-21) %>% 
+  summarise('3 Week Trash Rate'=(n_distinct(Collnum[`Collection Status`=='TR'])/n_distinct(Collnum))*100)
+
+dna18k<-left_join(x = dna18i, y = dna18j, by=c("Boar Stud"="Boar Stud.x","Breed"="Breed"))
+
+kbl(dna18k,align = 'c', digits = 2)%>% 
+  kable_styling(full_width = F,
+                font_size = 16)
+```
+
+<br>
+<br>
+<br>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+kbl(dna14,align = 'c', digits = 2)%>% 
+  kable_styling(full_width = F,
+                font_size = 16)
+```
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+dnapigs$BoarID<-as.character(dnapigs$BoarID)
+
+dna19<-left_join(x = dnapigs,y = collraw, by=c("BoarID"="BoarID"))
+
+dna20<-dna19 %>% 
+  group_by(BoarID) %>% 
+  filter(`Collection Status`%in%c('US','TR','NC')) %>% 
+  summarise('Collection Attempts'=n())
+
+dna21<-dna19 %>% 
+  group_by(BoarID) %>% 
+  filter(`Collection Status`%in%c('US','TR')) %>% 
+  summarise('Successful Collections'=n())
+
+dna22<-dna19 %>% 
+  group_by(BoarID) %>% 
+  filter(`Collection Status`=='US') %>% 
+  summarise('Acceptable Collections'=n())
+
+dna23<-dna17 %>% 
+  group_by(BoarID) %>% 
+  summarise('Doses'=sum(Doses))
+
+dna24<-left_join(x = dnapigs,y = dna20,by=c("BoarID"="BoarID"))
+dna25<-left_join(x = dna24,y = dna21,by=c("BoarID"="BoarID"))
+dna26<-left_join(x = dna25,y = dna22,by=c("BoarID"="BoarID"))
+dna27<-left_join(x = dna26,y = dna23,by=c("BoarID"="BoarID"))
+
+dna27$`Days In Stud`<-today()-as.Date(dna27$Date_Arrival)
+
+dna28<-dna27 %>% 
+  mutate('Distributed'=ifelse(is.na(dna27$Doses),'NO','YES'))
+
+dna28[is.na(dna28)]<-0
+
+dna29<-dna28 %>% 
+  filter(Distributed=='NO') %>% 
+  mutate('Apply for Credit'="",
+         'Reason'="")
+
+dna29<-dna29[c(1:5,7:9,12,11,13,14)]
+
+hs<- createStyle(textDecoration = "BOLD")
+
+deer<-dna29 %>% filter(StudID=='MB 7081')
+write.xlsx(deer,"7081_Eligible_Credits.xlsx", colWidths="auto", headerStyle = hs)
+
+laur<-dna29 %>% filter(StudID=='MB 7082')
+write.xlsx(laur,"7082_Eligible_Credits.xlsx", colWidths="auto", headerStyle = hs)
+
+spgv<-dna29 %>% filter(StudID=='SPGVA')
+write.xlsx(spgv,"7069_Eligible_Credits.xlsx", colWidths="auto", headerStyle = hs)
+
+```
+
+
