@@ -223,7 +223,7 @@ dnaa4<-dnaa3 %>%
 dnaa5<-dnaa4 %>% 
   group_by(`Boar Stud.x`,Breed.x) %>% 
   filter(rank<=maxrank) %>% 
-  summarise('Minimum Index of Incoming Boars'=(sum(weightedidx)/sum(Used_Doses))+8)
+  summarise('Minimum Index of Incoming Boars'=(sum(weightedidx)/sum(Used_Doses))+4.8)
 
 ###################################
 
