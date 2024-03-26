@@ -1,23 +1,9 @@
 ---
-title:
-output: 
-  html_document: 
-    theme: sandstone
-    toc_depth: 1
-    toc_float: yes
-    keep_md: yes
+title: "DNA Boar Report"
+output:
+  pdf_document: default
+classoption: landscape
 ---
-<style type="text/css">
-.main-container {
-  max-width: 1800px;
-  margin-left: 0px;
-  margin-right: 0px
-}
-</style>
-
-<h1><center>DNA Boar Report</h1>
-<br>
-<br>
 
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
@@ -237,76 +223,74 @@ dna18j<-dna2 %>%
 
 dna18k<-left_join(x = dna18i, y = dna18j, by=c("Boar Stud"="Boar Stud.x","Breed"="Breed"))
 
-kbl(dna18k,align = 'c', digits = 2)%>% 
-  kable_styling(full_width = F,
-                font_size = 16)
-```
+kbl(dna18k,booktabs = T, align = 'c', digits = 2)%>%
+  kable_styling(full_width = T)
 
-<br>
-<br>
-<br>
-
-```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
-kbl(dna14,align = 'c', digits = 2)%>% 
-  kable_styling(full_width = F,
-                font_size = 16)
 ```
 
 
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
-dnapigs$BoarID<-as.character(dnapigs$BoarID)
+kbl(dna14,booktabs=T, align = 'c', digits = 2)%>%
+  kable_styling(full_width = T)
 
-dna19<-left_join(x = dnapigs,y = collraw, by=c("BoarID"="BoarID"))
+```
 
-dna20<-dna19 %>% 
-  group_by(BoarID) %>% 
-  filter(`Collection Status`%in%c('US','TR','NC')) %>% 
-  summarise('Collection Attempts'=n())
 
-dna21<-dna19 %>% 
-  group_by(BoarID) %>% 
-  filter(`Collection Status`%in%c('US','TR')) %>% 
-  summarise('Successful Collections'=n())
 
-dna22<-dna19 %>% 
-  group_by(BoarID) %>% 
-  filter(`Collection Status`=='US') %>% 
-  summarise('Acceptable Collections'=n())
-
-dna23<-dna17 %>% 
-  group_by(BoarID) %>% 
-  summarise('Doses'=sum(Doses))
-
-dna24<-left_join(x = dnapigs,y = dna20,by=c("BoarID"="BoarID"))
-dna25<-left_join(x = dna24,y = dna21,by=c("BoarID"="BoarID"))
-dna26<-left_join(x = dna25,y = dna22,by=c("BoarID"="BoarID"))
-dna27<-left_join(x = dna26,y = dna23,by=c("BoarID"="BoarID"))
-
-dna27$`Days In Stud`<-today()-as.Date(dna27$Date_Arrival)
-
-dna28<-dna27 %>% 
-  mutate('Distributed'=ifelse(is.na(dna27$Doses),'NO','YES'))
-
-dna28[is.na(dna28)]<-0
-
-dna29<-dna28 %>% 
-  filter(Distributed=='NO') %>% 
-  mutate('Apply for Credit'="",
-         'Reason'="")
-
-dna29<-dna29[c(1:5,7:9,12,11,13,14)]
-
-hs<- createStyle(textDecoration = "BOLD")
-
-deer<-dna29 %>% filter(StudID=='MB 7081')
-write.xlsx(deer,"7081_Eligible_Credits.xlsx", colWidths="auto", headerStyle = hs)
-
-laur<-dna29 %>% filter(StudID=='MB 7082')
-write.xlsx(laur,"7082_Eligible_Credits.xlsx", colWidths="auto", headerStyle = hs)
-
-spgv<-dna29 %>% filter(StudID=='SPGVA')
-write.xlsx(spgv,"7069_Eligible_Credits.xlsx", colWidths="auto", headerStyle = hs)
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+# dnapigs$BoarID<-as.character(dnapigs$BoarID)
+# 
+# dna19<-left_join(x = dnapigs,y = collraw, by=c("BoarID"="BoarID"))
+# 
+# dna20<-dna19 %>% 
+#   group_by(BoarID) %>% 
+#   filter(`Collection Status`%in%c('US','TR','NC')) %>% 
+#   summarise('Collection Attempts'=n())
+# 
+# dna21<-dna19 %>% 
+#   group_by(BoarID) %>% 
+#   filter(`Collection Status`%in%c('US','TR')) %>% 
+#   summarise('Successful Collections'=n())
+# 
+# dna22<-dna19 %>% 
+#   group_by(BoarID) %>% 
+#   filter(`Collection Status`=='US') %>% 
+#   summarise('Acceptable Collections'=n())
+# 
+# dna23<-dna17 %>% 
+#   group_by(BoarID) %>% 
+#   summarise('Doses'=sum(Doses))
+# 
+# dna24<-left_join(x = dnapigs,y = dna20,by=c("BoarID"="BoarID"))
+# dna25<-left_join(x = dna24,y = dna21,by=c("BoarID"="BoarID"))
+# dna26<-left_join(x = dna25,y = dna22,by=c("BoarID"="BoarID"))
+# dna27<-left_join(x = dna26,y = dna23,by=c("BoarID"="BoarID"))
+# 
+# dna27$`Days In Stud`<-today()-as.Date(dna27$Date_Arrival)
+# 
+# dna28<-dna27 %>% 
+#   mutate('Distributed'=ifelse(is.na(dna27$Doses),'NO','YES'))
+# 
+# dna28[is.na(dna28)]<-0
+# 
+# dna29<-dna28 %>% 
+#   filter(Distributed=='NO') %>% 
+#   mutate('Apply for Credit'="",
+#          'Reason'="")
+# 
+# dna29<-dna29[c(1:5,7:9,12,11,13,14)]
+# 
+# hs<- createStyle(textDecoration = "BOLD")
+# 
+# deer<-dna29 %>% filter(StudID=='MB 7081')
+# write.xlsx(deer,"7081_Eligible_Credits.xlsx", colWidths="auto", headerStyle = hs)
+# 
+# laur<-dna29 %>% filter(StudID=='MB 7082')
+# write.xlsx(laur,"7082_Eligible_Credits.xlsx", colWidths="auto", headerStyle = hs)
+# 
+# spgv<-dna29 %>% filter(StudID=='SPGVA')
+# write.xlsx(spgv,"7069_Eligible_Credits.xlsx", colWidths="auto", headerStyle = hs)
 
 ```
 
